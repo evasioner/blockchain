@@ -13,6 +13,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"net"
 )
 
 type Block struct {
@@ -146,18 +147,56 @@ func respondWithJSON(w http.ResponseWriter, r *http.Request, code int, payload i
 	w.Write(response)
 }
 
+//func main() {
+//	err := godotenv.Load()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	go func() {
+//		t := time.Now()
+//		genesisBlock := Block{0, t.String(), 0, "", ""}
+//		spew.Dump(genesisBlock)
+//		Blockchain = append(Blockchain, genesisBlock)
+//	}()
+//	log.Fatal(run())
+//
+//}
+
+var bcServer chan []Block
+
+func handleConn(conn net.Conn) {
+	defer conn.Close()
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	go func() {
-		t := time.Now()
-		genesisBlock := Block{0, t.String(), 0, "", ""}
-		spew.Dump(genesisBlock)
-		Blockchain = append(Blockchain, genesisBlock)
-	}()
-	log.Fatal(run())
+	bcServer = make(chan []Block)
+
+	// create genesis block
+	t := time.Now()
+	genesisBlock := Block{0, t.String(), 0, "", ""}
+	spew.Dump(genesisBlock)
+	Blockchain = append(Blockchain, genesisBlock)
+
+	// start TCP and serve TCP server
+	server, err := net.Listen("tcp", ":"+os.Getenv("ADDR"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer server.Close()
+
+	for {
+		conn, err := server.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		go handleConn(conn)
+	}
 
 }
+
